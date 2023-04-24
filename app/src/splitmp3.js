@@ -1,57 +1,22 @@
 const fs = require('fs');
-const path = require('path');
-const ffmpeg = require('ffmpeg');
+const MediaSplit = require('media-split');
 
-// Check if FFmpeg is installed
-if (!ffmpeg) {
-  console.error('FFmpeg is not installed. Please install it first.');
-  process.exit(1);
+// Change this to the path of your input MP3 file
+const inputFilePath = 'test.mp3';
+
+// Change this to the directory where you want to save the output files
+const outputDirectory = 'splits';
+
+// Create the output directory if it doesn't exist
+if (!fs.existsSync(outputDirectory)) {
+  fs.mkdirSync(outputDirectory);
 }
 
-function splitMp3(inputFile, outputDir, segmentDuration) {
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir);
+// Configure the media splitter
+const split = new MediaSplit({input: inputFilePath, sections: ['[10:00] Split']});
+split.parse().then((sections) => {
+  for (let section of sections) {
+    console.log(section.name);
   }
+})
 
-  ffmpeg.ffprobe(inputFile, (err, metadata) => {
-    if (err) {
-      console.error('Error while reading input file:', err);
-      return;
-    }
-
-    const duration = metadata.format.duration;
-    let currentSegment = 0;
-    let segmentStart = 0;
-
-    while (segmentStart < duration) {
-      const outputFileName = path.join(outputDir, `segment-${currentSegment}.mp3`);
-      ffmpeg(inputFile)
-        .setStartTime(segmentStart)
-        .setDuration(segmentDuration)
-        .output(outputFileName)
-        .on('error', (err) => {
-          console.error('Error while creating segment:', err);
-        })
-        .on('end', () => {
-          console.log(`Segment ${currentSegment} saved as ${outputFileName}`);
-        })
-        .run();
-
-      currentSegment++;
-      segmentStart += segmentDuration;
-    }
-  });
-}
-
-// Usage: node split-mp3.js <inputFile> <outputDir> [segmentDuration]
-const args = process.argv.slice(2);
-if (args.length < 2) {
-  console.error('Usage: node split-mp3.js <inputFile> <outputDir> [segmentDuration]');
-  process.exit(1);
-}
-
-const inputFile = args[0];
-const outputDir = args[1];
-const segmentDuration = args[2] ? parseInt(args[2], 10) : 600; // Default to 600 seconds (10 minutes)
-
-splitMp3(inputFile, outputDir, segmentDuration);
