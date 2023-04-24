@@ -12,11 +12,38 @@ if (!fs.existsSync(outputDirectory)) {
   fs.mkdirSync(outputDirectory);
 }
 
-// Configure the media splitter
-const split = new MediaSplit({input: inputFilePath, sections: ['[10:00] Split']});
-split.parse().then((sections) => {
-  for (let section of sections) {
-    console.log(section.name);
+var media;
+
+fs.readFile(inputFilePath, (err, data) => {
+  if (err) {
+    console.error("Error reading the mp3 file:", err);
+    return;
   }
-})
+
+  media = new MediaSplit(data);
+});
+
+
+const segmentDuration = 10 * 60; // 10 minutes in seconds
+
+media.splitByDuration(segmentDuration, (err, segments) => {
+  if (err) {
+    console.error("Error splitting the mp3 file:", err);
+    return;
+  }
+
+  // Save the segments to separate files
+  segments.forEach((segment, index) => {
+    const outputPath = `splits/segment${index + 1}.mp3`;
+    fs.writeFile(outputPath, segment, (err) => {
+      if (err) {
+        console.error("Error writing the mp3 segment:", err);
+        return;
+      }
+
+      console.log(`Segment ${index + 1} saved to ${outputPath}`);
+    });
+  });
+});
+
 
